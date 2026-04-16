@@ -79,6 +79,39 @@ void pt_insert(struct db_buffer_pool *bp, int page_id, int frame_id){
   }
 }
 
+struct db_frame* fetch_page(struct db_buffer_pool* bp, int page_id){
+  int frame_id = pt_lookup(bp, page_id);
+  if(frame_id != -1){
+    struct db_frame *frame = &bp->frames[frame_id];
+    frame->pin_count += 1;
+    return frame;
+  }
+
+  if(bp->free_count == 0){
+    return NULL;
+  }
+
+  int new_frame_id = bp->free_list[--bp->free_count];
+  struct db_frame *frame = &bp->frames[new_frame_id];
+  frame->page_id = page_id;
+  frame->pin_count = 1;
+  frame->is_dirty = 0;
+
+  pt_insert(bp, page_id, new_frame_id);
+  return frame;
+}
+
+void unpin_page(struct db_buffer_pool *bp, int page_id, int is_dirty){
+  int frame_id = pt_lookup(bp, page_id);
+  if(frame_id != -1){
+    bp->frames[frame_id].pin_count -= 1;
+    if(is_dirty){
+      bp->frames[frame_id].is_dirty = 1;
+    }
+  }
+}
+
+
 int main() {
 
   return 0;
