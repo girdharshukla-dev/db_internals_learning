@@ -1,5 +1,5 @@
-#ifndef BUFFER_H
-#define BUFFER_H
+#ifndef BUFFER_POOL_MANAGER_H
+#define BUFFER_POOL_MANAGER_H
 
 #define PAGE_SIZE 4096
 
