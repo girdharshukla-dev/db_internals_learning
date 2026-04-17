@@ -7,6 +7,7 @@ struct db_frame {
   int page_id;
   int pin_count;
   int is_dirty;
+  int ref_bit;
   char data[PAGE_SIZE];
 };
 
@@ -32,6 +33,8 @@ struct db_buffer_pool {
 
   int next_page_id;
   int fd;
+
+  int clock_hand;
 };
 
 int find_victim(struct db_buffer_pool *bp);

@@ -16,6 +16,7 @@ struct db_buffer_pool *buffer_init(int pool_size, int fd) {
     bp->frames[i].page_id = -1;
     bp->frames[i].pin_count = 0;
     bp->frames[i].is_dirty = 0;
+    bp->frames[i].ref_bit = 0;
   }
 
   bp->page_entry = malloc(bp->pool_size * sizeof(struct page_table_entry));
@@ -27,6 +28,7 @@ struct db_buffer_pool *buffer_init(int pool_size, int fd) {
     bp->free_list[i] = i;
   }
   bp->free_count = bp->pool_size;
+  bp->clock_hand = 0;
   return bp;
 }
 
@@ -54,6 +56,7 @@ struct db_frame *fetch_page(struct db_buffer_pool *bp, int page_id) {
   if (frame_id != -1) {
     struct db_frame *frame = &bp->frames[frame_id];
     frame->pin_count += 1;
+    frame->ref_bit = 1;
     return frame;
   }
 
@@ -64,8 +67,8 @@ struct db_frame *fetch_page(struct db_buffer_pool *bp, int page_id) {
     if (victim_frame_id == -1) {
       return NULL;
     }
-    if(bp->frames[victim_frame_id].is_dirty == 1){
-      //write to disk
+    if (bp->frames[victim_frame_id].is_dirty == 1) {
+      // write to disk
     }
     for (size_t j = 0; j < bp->pool_size; j++) {
       if (bp->page_entry[j].frame_id == victim_frame_id) {
@@ -74,7 +77,7 @@ struct db_frame *fetch_page(struct db_buffer_pool *bp, int page_id) {
       }
     }
     new_frame_id = victim_frame_id;
-  }else{
+  } else {
     new_frame_id = bp->free_list[--bp->free_count];
   }
 
@@ -82,6 +85,7 @@ struct db_frame *fetch_page(struct db_buffer_pool *bp, int page_id) {
   frame->page_id = page_id;
   frame->pin_count = 1;
   frame->is_dirty = 0;
+  frame->ref_bit = 1;
 
   pt_insert(bp, page_id, new_frame_id);
   return frame;
@@ -98,11 +102,16 @@ void unpin_page(struct db_buffer_pool *bp, int page_id, int is_dirty) {
 }
 
 int find_victim(struct db_buffer_pool *bp) {
-  for (size_t i = 0; i < bp->pool_size; i++) {
-    if (bp->frames[i].pin_count == 0) {
-      return i;
+  int limit = 2 * bp->pool_size;
+  while (limit-- > 0) {
+    struct db_frame *frame = &(bp->frames[bp->clock_hand]);
+    if (frame->pin_count > 0) {
+    } else if (frame->ref_bit == 1) {
+      frame->ref_bit = 0;
+    }else{
+      return bp->clock_hand;
     }
+    bp->clock_hand = (bp->clock_hand + 1) % bp->pool_size;
   }
   return -1;
 }
-
