@@ -5,4 +5,4 @@ replay:
 	gcc db.c memtable.c wal.c main2.c -o lsm
 
 clean:
-	rm -rf lsm wal.log
+	rm -rf lsm wal.log *.dat

@@ -54,3 +54,12 @@ int memtable_get(struct memtable_type *mt, uint64_t key, uint64_t *value){
   return -1;
 }
 
+struct kv_pair *memtable_dump(struct memtable_type *mt, size_t *count){
+  *count = mt->current_size;
+  return mt->data;
+}
+
+void memtable_clear(struct memtable_type *mt){
+  mt->current_size = 0;
+}
+

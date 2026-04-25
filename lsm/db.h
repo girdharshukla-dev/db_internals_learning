@@ -2,10 +2,14 @@
 #define DB_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 struct db_type {
-    struct wal_type *wal;
-    struct memtable_type *mt;
+  struct wal_type *wal;
+  struct memtable_type *mt;
+  char **sstable_paths;
+  uint16_t next_sst_id;
+  size_t capacity;
 };
 
 struct db_type *db_open(const char *wal_path);

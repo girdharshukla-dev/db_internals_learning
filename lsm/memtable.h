@@ -18,6 +18,8 @@ struct memtable_type{
 struct memtable_type *memtable_create(size_t capacity);
 int memtable_put(struct memtable_type *mt, uint64_t key, uint64_t value);
 int memtable_get(struct memtable_type *mt, uint64_t key, uint64_t *value);
+struct kv_pair *memtable_dump(struct memtable_type *mt, size_t *count);
+void memtable_clear(struct memtable_type *mt);
 
 void memtable_destroy(struct memtable_type *mt);
 
