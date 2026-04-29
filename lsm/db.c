@@ -2,6 +2,7 @@
 #include "wal.h"
 #include "memtable.h"
 #include "sstable.h"
+#include "compaction.h"
 
 #include <stdlib.h>
 #include <fcntl.h>
@@ -10,7 +11,7 @@
 
 #define MEMTABLE_SIZE 10
 #define MEMTABLE_THRESHOLD 5
-#define MAX_SSTABLE 10
+#define MAX_SSTABLE 2
 
 struct db_type *db_open(const char *wal_path) {
   struct wal_type *wal = wal_open(wal_path);
@@ -21,6 +22,7 @@ struct db_type *db_open(const char *wal_path) {
   db->next_sst_id = 0;
   db->capacity = MAX_SSTABLE;
   db->sstable_paths = malloc(sizeof(char *) * db->capacity);
+  db->current_ss_count = 0;
 
   wal_replay(wal, db->mt);
   return db;
@@ -32,6 +34,15 @@ int db_put(struct db_type *db, uint64_t key, uint64_t value) {
   wal_sync(db->wal);
 
   if (db->mt->current_size >= MEMTABLE_THRESHOLD) {
+    if(db->current_ss_count == MAX_SSTABLE){
+      int result = compact_db(db);
+      if(result == 0){
+        db->current_ss_count--;
+      }else{
+        return -1;
+      }
+    }
+    
     char path[128];
     snprintf(path, sizeof(path), "sst_%d.dat", db->next_sst_id);
     if (sstable_write(path, db->mt) < 0)
@@ -39,6 +50,7 @@ int db_put(struct db_type *db, uint64_t key, uint64_t value) {
     memtable_clear(db->mt);
     db->sstable_paths[db->next_sst_id] = strdup(path);
     db->next_sst_id++;
+    db->current_ss_count++;
   }
 
   return memtable_put(db->mt, key, value);

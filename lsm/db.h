@@ -9,6 +9,7 @@ struct db_type {
   struct memtable_type *mt;
   char **sstable_paths;
   uint16_t next_sst_id;
+  size_t current_ss_count;
   size_t capacity;
 };
 
