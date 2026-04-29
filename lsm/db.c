@@ -48,7 +48,7 @@ int db_put(struct db_type *db, uint64_t key, uint64_t value) {
     if (sstable_write(path, db->mt) < 0)
       return -1;
     memtable_clear(db->mt);
-    db->sstable_paths[db->next_sst_id] = strdup(path);
+    db->sstable_paths[db->current_ss_count] = strdup(path);
     db->next_sst_id++;
     db->current_ss_count++;
   }
@@ -59,7 +59,7 @@ int db_put(struct db_type *db, uint64_t key, uint64_t value) {
 int db_get(struct db_type *db, uint64_t key, uint64_t *value) {
   if (memtable_get(db->mt, key, value) == 0)
     return 0;
-  for (size_t i = 0; i < db->next_sst_id; i++) {
+  for (int i = db->current_ss_count - 1; i >= 0; i--) {
     if (sstable_get(db->sstable_paths[i], key, value) == 0) return 0;
   }
   return -1;

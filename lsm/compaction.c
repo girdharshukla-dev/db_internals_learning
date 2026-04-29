@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stddef.h>
+#include <string.h>
 
 struct kv_pair {
   uint64_t key;
@@ -18,10 +19,10 @@ int compact_db(struct db_type *db) {
 
   char out_path[128];
   snprintf(out_path, sizeof(out_path), "sst_%d.dat", db->next_sst_id++);
-  int fd_out = open(out_path, O_CREAT | O_WRONLY, 0644);
+  int fd_out = open(out_path, O_CREAT | O_WRONLY | O_TRUNC, 0644);
 
   struct kv_pair a, b;
-  int have_a, have_b;
+  int have_a = 0, have_b = 0;
 
   size_t nr = 0;
   while (nr < sizeof(a)) {
@@ -33,9 +34,9 @@ int compact_db(struct db_type *db) {
   if (nr == sizeof(a))
     have_a = 1;
 
-  size_t nr = 0;
+  nr = 0;
   while (nr < sizeof(b)) {
-    ssize_t n = read(fd_a, (char *)&b + nr, sizeof(b) - nr);
+    ssize_t n = read(fd_b, (char *)&b + nr, sizeof(b) - nr);
     if (n <= 0)
       break;
     nr += n;
@@ -86,14 +87,18 @@ int compact_db(struct db_type *db) {
           break;
         nr += n;
       }
+      if(nr == sizeof(a)) have_a = 1;
     }
     if (advance_b) {
+      nr = 0;
+      have_b = 0;
       while (nr < sizeof(b)) {
-        ssize_t n = read(fd_a, (char *)&b + nr, sizeof(b) - nr);
+        ssize_t n = read(fd_b, (char *)&b + nr, sizeof(b) - nr);
         if (n <= 0)
-          break;
+        break;
         nr += n;
       }
+      if(nr == sizeof(b)) have_b = 1;
     }
   }
 
@@ -101,14 +106,15 @@ int compact_db(struct db_type *db) {
   close(fd_a);
   close(fd_b);
   close(fd_out);
-  
+
   remove(db->sstable_paths[0]);
   remove(db->sstable_paths[1]);
   free(db->sstable_paths[0]);
+  free(db->sstable_paths[1]);
   db->sstable_paths[0] = strdup(out_path);
 
-  for(size_t i = 2; i < db->next_sst_id; i++){
-    db->sstable_paths[i-1] = db->sstable_paths[i];
+  for (size_t i = 2; i < db->current_ss_count; i++) {
+    db->sstable_paths[i - 1] = db->sstable_paths[i];
   }
   return 0;
 }
